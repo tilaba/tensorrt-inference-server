@@ -31,7 +31,11 @@
 #include "src/core/model_repository_manager.h"
 #include "src/core/server_status.pb.h"
 #include "src/core/status.h"
-#include "tensorflow_serving/core/servable_state_monitor.h"
+
+namespace tensorflow { namespace serving {
+class ServableStateMonitor;
+}}  // namespace tensorflow::serving
+namespace tfs = tensorflow::serving;
 
 namespace nvidia { namespace inferenceserver {
 
@@ -185,14 +189,14 @@ class ServerStatusManager {
   Status Get(
       ServerStatus* server_status, const std::string& server_id,
       ServerReadyState server_ready_state, uint64_t server_uptime_ns,
-      const tensorflow::serving::ServableStateMonitor* monitor) const;
+      const tfs::ServableStateMonitor* monitor) const;
 
   // Get the server status and the status for a single model.
   Status Get(
       ServerStatus* server_status, const std::string& server_id,
       ServerReadyState server_ready_state, uint64_t server_uptime_ns,
       const std::string& model_name,
-      const tensorflow::serving::ServableStateMonitor* monitor) const;
+      const tfs::ServableStateMonitor* monitor) const;
 
   // Add a duration to the Server Stat specified by 'kind'.
   void UpdateServerStat(uint64_t duration, ServerStatTimerScoped::Kind kind);

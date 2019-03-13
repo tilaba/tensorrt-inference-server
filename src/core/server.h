@@ -39,18 +39,13 @@
 #include "src/core/server_status.h"
 #include "src/core/server_status.pb.h"
 #include "src/core/status.h"
-#include "tensorflow_serving/model_servers/server_core.h"
 
+namespace tensorflow { namespace serving {
+class ServerCore;
+}}  // namespace tensorflow::serving
 namespace tfs = tensorflow::serving;
 
 namespace nvidia { namespace inferenceserver {
-
-class CustomBundle;
-class GraphDefBundle;
-class NetDefBundle;
-class PlanBundle;
-class SavedModelBundle;
-class EnsembleBundle;
 
 // Inference server information.
 class InferenceServer {
@@ -80,9 +75,10 @@ class InferenceServer {
 
   // Perform inference on the given input for specified model and
   // update RequestStatus object with the status of the inference.
+  // Ownership of the 'backend' is transferred to this function which
+  // is responsible for releasing it once inferencing is complete.
   void HandleInfer(
-      RequestStatus* request_status,
-      const std::shared_ptr<InferBackendHandle>& backend,
+      RequestStatus* request_status, const InferBackendHandle* backend,
       std::shared_ptr<InferRequestProvider> request_provider,
       std::shared_ptr<InferResponseProvider> response_provider,
       std::shared_ptr<ModelInferStats> infer_stats,
@@ -150,28 +146,9 @@ class InferenceServer {
     return status_manager_;
   }
 
-  // A handle to a backend.
-  class InferBackendHandle {
-   public:
-    InferBackendHandle() : is_(nullptr) {}
-    Status Init(
-        const std::string& model_name, const int64_t model_version,
-        tfs::ServerCore* core);
-    InferenceBackend* operator()() { return is_; }
-
-   private:
-    InferenceBackend* is_;
-    tfs::ServableHandle<GraphDefBundle> graphdef_bundle_;
-    tfs::ServableHandle<PlanBundle> plan_bundle_;
-    tfs::ServableHandle<NetDefBundle> netdef_bundle_;
-    tfs::ServableHandle<SavedModelBundle> saved_model_bundle_;
-    tfs::ServableHandle<CustomBundle> custom_bundle_;
-    tfs::ServableHandle<EnsembleBundle> ensemble_bundle_;
-  };
-
   Status CreateBackendHandle(
       const std::string& model_name, const int64_t model_version,
-      const std::shared_ptr<InferBackendHandle>& handle);
+      InferenceBackend** backend, InferBackendHandle** handle);
 
  private:
   // Return the uptime of the server in nanoseconds.

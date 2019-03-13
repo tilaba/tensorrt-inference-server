@@ -47,58 +47,25 @@ cc_proto_library(
 )
 
 cc_library(
-    name = "autofill",
-    srcs = ["autofill.cc"],
-    hdrs = ["autofill.h"],
-    deps = [
-        ":loader",
-        ":savedmodel_bundle_proto",
-        ":tf_utils",
-        "//src/core:autofill_header",
-        "//src/core:logging",
-        "//src/core:status",
-        "@org_tensorflow//tensorflow/cc/saved_model:tag_constants",
-        "@org_tensorflow//tensorflow/core:lib",
-    ],
-)
-
-cc_library(
-    name = "tf_utils",
-    srcs = ["tf_utils.cc"],
-    hdrs = ["tf_utils.h"],
-    deps = [
-        "//src/core:model_config",
-        "//src/core:model_config_proto",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
-)
-
-cc_library(
-    name = "loader",
-    srcs = ["loader.cc"],
-    hdrs = ["loader.h"],
-    deps = [
-        "//src/core:logging",
-        "//src/core:status",
-        "@org_tensorflow//tensorflow/c:c_api",
-        "@org_tensorflow//tensorflow/cc/saved_model:tag_constants",
-    ],
-)
-
-cc_library(
     name = "base_bundle",
-    srcs = ["base_bundle.cc"],
-    hdrs = ["base_bundle.h"],
+    srcs = [
+        "autofill.cc",
+        "base_bundle.cc",
+        "loader.cc",
+        "tf_utils.cc",
+    ],
+    hdrs = [
+        "autofill.h",
+        "base_bundle.h",
+        "loader.h",
+        "tf_utils.h",
+    ],
     deps = [
-        ":tf_utils",
-        "//src/core:constants",
-        "//src/core:logging",
-        "//src/core:model_config_proto",
-        "//src/core:model_config_utils",
-        "//src/core:provider",
-        "//src/core:server_status",
-        "//src/core:status",
+        ":graphdef_bundle_proto",
+        ":savedmodel_bundle_proto",
+        "//src/core:server_headers",
         "@org_tensorflow//tensorflow/c:c_api",
+        "@org_tensorflow//tensorflow/cc/saved_model:tag_constants",
         "@org_tensorflow//tensorflow/core:lib",
     ],
 )
@@ -109,9 +76,7 @@ cc_library(
     hdrs = ["graphdef_bundle.h"],
     deps = [
         ":base_bundle",
-        ":tf_utils",
-        "//src/core:model_config",
-        "//src/core:status",
+        ":graphdef_bundle_proto",
     ],
 )
 
@@ -122,12 +87,7 @@ cc_library(
     deps = [
         ":graphdef_bundle",
         ":graphdef_bundle_proto",
-        "//src/core:constants",
-        "//src/core:logging",
-        "//src/core:model_config",
-        "//src/core:model_config_proto",
-        "//src/core:model_config_utils",
-        "//src/core:status",
+        "//src/core:server_headers",
         "@tf_serving//tensorflow_serving/core:loader",
         "@tf_serving//tensorflow_serving/core:simple_loader",
         "@tf_serving//tensorflow_serving/core:source_adapter",
@@ -144,10 +104,7 @@ cc_library(
     hdrs = ["savedmodel_bundle.h"],
     deps = [
         ":base_bundle",
-        ":loader",
-        ":tf_utils",
-        "//src/core:model_config",
-        "//src/core:status",
+        ":savedmodel_bundle_proto",
     ],
 )
 
@@ -158,11 +115,7 @@ cc_library(
     deps = [
         ":savedmodel_bundle",
         ":savedmodel_bundle_proto",
-        "//src/core:constants",
-        "//src/core:logging",
-        "//src/core:model_config",
-        "//src/core:model_config_proto",
-        "//src/core:model_config_utils",
+        "//src/core:server_headers",
         "@tf_serving//tensorflow_serving/core:loader",
         "@tf_serving//tensorflow_serving/core:simple_loader",
         "@tf_serving//tensorflow_serving/core:source_adapter",
@@ -194,8 +147,6 @@ cc_test(
     ],
     deps = [
         ":graphdef_bundle",
-        "//src/core:constants",
-        "//src/core:status",
         "//src/test:model_config_test_base",
         "//src/test:testmain",
         "@local_config_cuda//cuda:cudart",
@@ -217,8 +168,6 @@ cc_test(
     ],
     deps = [
         ":savedmodel_bundle",
-        "//src/core:constants",
-        "//src/core:status",
         "//src/test:model_config_test_base",
         "//src/test:testmain",
         "@local_config_cuda//cuda:cudart",

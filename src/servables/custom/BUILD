@@ -44,20 +44,18 @@ cc_library(
 
 cc_library(
     name = "custom_bundle",
-    srcs = [ "custom_bundle.cc" ],
-    hdrs = [ "custom_bundle.h" ],
+    srcs = [
+        "custom_bundle.cc",
+        "loader.cc",
+    ],
+    hdrs = [
+        "custom_bundle.h",
+        "loader.h",
+    ],
     deps = [
         ":custom",
-        ":loader",
-        "//src/core:backend",
-        "//src/core:constants",
-        "//src/core:logging",
-        "//src/core:model_config_proto",
-        "//src/core:model_config_utils",
-        "//src/core:model_config",
-        "//src/core:provider",
-        "//src/core:server_status",
-        "//src/core:status",
+        "//src/core:server_headers",
+        "@local_config_cuda//cuda:cuda_headers",
     ],
 )
 
@@ -68,12 +66,7 @@ cc_library(
     deps = [
         ":custom_bundle",
         ":custom_bundle_proto",
-        "//src/core:constants",
-        "//src/core:logging",
-        "//src/core:model_config",
-        "//src/core:model_config_proto",
-        "//src/core:model_config_utils",
-        "//src/core:status",
+        "//src/core:server_headers",
         "@tf_serving//tensorflow_serving/core:loader",
         "@tf_serving//tensorflow_serving/core:simple_loader",
         "@tf_serving//tensorflow_serving/core:source_adapter",
@@ -81,18 +74,6 @@ cc_library(
         "@tf_serving//tensorflow_serving/util:optional",
     ],
     alwayslink = 1,
-)
-
-cc_library(
-    name = "loader",
-    srcs = ["loader.cc"],
-    hdrs = ["loader.h"],
-    deps = [
-        ":custom",
-        "//src/core:logging",
-        "//src/core:status",
-        "@org_tensorflow//tensorflow/core:lib",
-    ],
 )
 
 cc_test(
@@ -106,8 +87,6 @@ cc_test(
     ],
     deps = [
         ":custom_bundle",
-        "//src/core:constants",
-        "//src/core:status",
         "//src/test:model_config_test_base",
         "//src/test:testmain",
         "@local_config_cuda//cuda:cudart",

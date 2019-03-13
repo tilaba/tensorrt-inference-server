@@ -28,7 +28,6 @@
 
 #include "src/core/constants.h"
 #include "src/core/logging.h"
-#include "src/core/model_config.h"
 #include "src/servables/caffe2/autofill.h"
 #include "src/servables/tensorflow/autofill.h"
 #include "src/servables/tensorrt/autofill.h"

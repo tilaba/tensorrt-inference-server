@@ -134,4 +134,5 @@ namespace tensorflow { namespace serving {
 REGISTER_STORAGE_PATH_SOURCE_ADAPTER(
     nvidia::inferenceserver::CustomBundleSourceAdapter,
     nvidia::inferenceserver::CustomBundleSourceAdapterConfig);
+
 }}  // namespace tensorflow::serving

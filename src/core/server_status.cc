@@ -33,6 +33,7 @@
 #include "src/core/metrics.h"
 #include "src/core/provider.h"
 #include "tensorflow_serving/core/servable_state.h"
+#include "tensorflow_serving/core/servable_state_monitor.h"
 
 namespace nvidia { namespace inferenceserver {
 
@@ -40,7 +41,7 @@ namespace {
 
 void
 SetModelVersionReadyState(
-    const tensorflow::serving::ServableStateMonitor& monitor, ModelStatus& ms)
+    const tfs::ServableStateMonitor& monitor, ModelStatus& ms)
 {
   const std::string& model_name = ms.config().name();
 
@@ -51,22 +52,21 @@ SetModelVersionReadyState(
     itr.second.set_ready_state(ModelReadyState::MODEL_UNAVAILABLE);
   }
 
-  const tensorflow::serving::ServableStateMonitor::VersionMap
-      versions_and_states = monitor.GetVersionStates(model_name);
+  const tfs::ServableStateMonitor::VersionMap versions_and_states =
+      monitor.GetVersionStates(model_name);
   for (const auto& version_and_state : versions_and_states) {
     const int64_t version = version_and_state.first;
-    const tensorflow::serving::ServableState& servable_state =
-        version_and_state.second.state;
+    const tfs::ServableState& servable_state = version_and_state.second.state;
 
     ModelReadyState ready_state = ModelReadyState::MODEL_UNKNOWN;
     switch (servable_state.manager_state) {
-      case tensorflow::serving::ServableState::ManagerState::kLoading:
+      case tfs::ServableState::ManagerState::kLoading:
         ready_state = ModelReadyState::MODEL_LOADING;
         break;
-      case tensorflow::serving::ServableState::ManagerState::kUnloading:
+      case tfs::ServableState::ManagerState::kUnloading:
         ready_state = ModelReadyState::MODEL_UNLOADING;
         break;
-      case tensorflow::serving::ServableState::ManagerState::kAvailable:
+      case tfs::ServableState::ManagerState::kAvailable:
         ready_state = ModelReadyState::MODEL_READY;
         break;
       default:
@@ -140,7 +140,7 @@ Status
 ServerStatusManager::Get(
     ServerStatus* server_status, const std::string& server_id,
     ServerReadyState server_ready_state, uint64_t server_uptime_ns,
-    const tensorflow::serving::ServableStateMonitor* monitor) const
+    const tfs::ServableStateMonitor* monitor) const
 {
   std::lock_guard<std::mutex> lock(mu_);
   server_status->CopyFrom(server_status_);
@@ -162,7 +162,7 @@ ServerStatusManager::Get(
     ServerStatus* server_status, const std::string& server_id,
     ServerReadyState server_ready_state, uint64_t server_uptime_ns,
     const std::string& model_name,
-    const tensorflow::serving::ServableStateMonitor* monitor) const
+    const tfs::ServableStateMonitor* monitor) const
 {
   std::lock_guard<std::mutex> lock(mu_);
 

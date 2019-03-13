@@ -554,4 +554,5 @@ HTTPServer::Create(
   http_server->reset(new HTTPServerImpl(server, port, thread_cnt));
   return Status::Success;
 }
+
 }}  // namespace nvidia::inferenceserver

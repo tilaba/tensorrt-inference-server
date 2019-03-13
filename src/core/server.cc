@@ -202,6 +202,99 @@ BuildPlatformConfigMap(
 }  // namespace
 
 //
+// InferBackendHandle
+//
+class InferenceServer::InferBackendHandle {
+ public:
+  InferBackendHandle() : is_(nullptr) {}
+  Status Init(
+      const std::string& model_name, const int64_t model_version,
+      tfs::ServerCore* core);
+  InferenceBackend* GetInferenceBackend() const { return is_; }
+
+ private:
+  InferenceBackend* is_;
+  tfs::ServableHandle<GraphDefBundle> graphdef_bundle_;
+  tfs::ServableHandle<PlanBundle> plan_bundle_;
+  tfs::ServableHandle<NetDefBundle> netdef_bundle_;
+  tfs::ServableHandle<SavedModelBundle> saved_model_bundle_;
+  tfs::ServableHandle<CustomBundle> custom_bundle_;
+  tfs::ServableHandle<EnsembleBundle> ensemble_bundle_;
+};
+
+Status
+InferenceServer::InferBackendHandle::Init(
+    const std::string& model_name, const int64_t model_version,
+    tfs::ServerCore* core)
+{
+  // Create the model-spec. A negative version indicates that the
+  // latest version of the model should be used.
+  tfs::ModelSpec model_spec;
+  model_spec.set_name(model_name);
+  if (model_version >= 0) {
+    model_spec.mutable_version()->set_value(model_version);
+  }
+
+  // Get the InferenceBackend appropriate for the request.
+  Platform platform;
+  Status status =
+      ModelRepositoryManager::GetModelPlatform(model_name, &platform);
+  if (status.IsOk()) {
+    tensorflow::Status tfstatus;
+    is_ = nullptr;
+
+    switch (platform) {
+      case Platform::PLATFORM_TENSORFLOW_GRAPHDEF:
+        tfstatus = core->GetServableHandle(model_spec, &(graphdef_bundle_));
+        if (tfstatus.ok()) {
+          is_ = static_cast<InferenceBackend*>(graphdef_bundle_.get());
+        }
+        break;
+      case Platform::PLATFORM_TENSORFLOW_SAVEDMODEL:
+        tfstatus = core->GetServableHandle(model_spec, &(saved_model_bundle_));
+        if (tfstatus.ok()) {
+          is_ = static_cast<InferenceBackend*>(saved_model_bundle_.get());
+        }
+        break;
+      case Platform::PLATFORM_TENSORRT_PLAN:
+        tfstatus = core->GetServableHandle(model_spec, &(plan_bundle_));
+        if (tfstatus.ok()) {
+          is_ = static_cast<InferenceBackend*>(plan_bundle_.get());
+        }
+        break;
+      case Platform::PLATFORM_CAFFE2_NETDEF:
+        tfstatus = core->GetServableHandle(model_spec, &(netdef_bundle_));
+        if (tfstatus.ok()) {
+          is_ = static_cast<InferenceBackend*>(netdef_bundle_.get());
+        }
+        break;
+      case Platform::PLATFORM_CUSTOM:
+        tfstatus = core->GetServableHandle(model_spec, &(custom_bundle_));
+        if (tfstatus.ok()) {
+          is_ = static_cast<InferenceBackend*>(custom_bundle_.get());
+        }
+        break;
+      case Platform::PLATFORM_ENSEMBLE:
+        tfstatus = core->GetServableHandle(model_spec, &(ensemble_bundle_));
+        if (tfstatus.ok()) {
+          is_ = static_cast<InferenceBackend*>(ensemble_bundle_.get());
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (is_ == nullptr) {
+    status = Status(
+        RequestStatusCode::UNAVAILABLE,
+        "Inference request for unknown model '" + model_name + "'");
+  }
+
+  return status;
+}
+
+//
 // InferenceServer
 //
 InferenceServer::InferenceServer()
@@ -458,9 +551,19 @@ InferenceServer::PollModelRepository()
 Status
 InferenceServer::CreateBackendHandle(
     const std::string& model_name, const int64_t model_version,
-    const std::shared_ptr<InferBackendHandle>& handle)
+    InferenceBackend** backend, InferBackendHandle** handle)
 {
-  return handle->Init(model_name, model_version, core_.get());
+  *handle = new InferBackendHandle();
+  Status status = (*handle)->Init(model_name, model_version, core_.get());
+  if (status.IsOk()) {
+    *backend = (*handle)->GetInferenceBackend();
+  } else {
+    delete *handle;
+    *handle = nullptr;
+    *backend = nullptr;
+  }
+
+  return status;
 }
 
 void
@@ -560,8 +663,7 @@ InferenceServer::HandleProfile(
 
 void
 InferenceServer::HandleInfer(
-    RequestStatus* request_status,
-    const std::shared_ptr<InferBackendHandle>& backend,
+    RequestStatus* request_status, const InferBackendHandle* backend_handle,
     std::shared_ptr<InferRequestProvider> request_provider,
     std::shared_ptr<InferResponseProvider> response_provider,
     std::shared_ptr<ModelInferStats> infer_stats,
@@ -579,17 +681,20 @@ InferenceServer::HandleInfer(
       new ScopedAtomicIncrement(inflight_request_counter_));
   const uint64_t request_id = NextRequestId();
 
-  // Need to capture 'backend' to keep it alive... it goes away when
-  // it goes out of scope which can cause the model to be unloaded,
-  // and we don't want that to happen when a request is in flight.
-  auto OnCompleteHandleInfer = [this, OnCompleteInferRPC, backend,
+  // Need to capture 'backend_handle' to keep it alive... it goes away
+  // when it goes out of scope which can cause the model to be
+  // unloaded, and we don't want that to happen when a request is in
+  // flight.
+  auto OnCompleteHandleInfer = [this, OnCompleteInferRPC, backend_handle,
                                 response_provider, request_status, request_id,
                                 infer_stats, inflight](Status status) mutable {
     if (status.IsOk()) {
-      status = response_provider->FinalizeResponse(*(*backend)());
+      status = response_provider->FinalizeResponse(
+          *(backend_handle->GetInferenceBackend()));
       if (status.IsOk()) {
         RequestStatusFactory::Create(request_status, request_id, id_, status);
         OnCompleteInferRPC();
+        delete backend_handle;
         return;
       }
     }
@@ -599,13 +704,16 @@ InferenceServer::HandleInfer(
     LOG_VERBOSE(1) << "Infer failed: " << status.Message();
     RequestStatusFactory::Create(request_status, request_id, id_, status);
     OnCompleteInferRPC();
+    delete backend_handle;
   };
 
-  // Need to set 'this' in each backend even though it is redundant after
-  // the first time. Once we remove TFS dependency we can construct each backend
-  // in a way that makes it directly aware of the inference server
-  (*backend)()->SetInferenceServer(this);
-  (*backend)()->Run(
+  // Need to set 'this' in each backend even though it is redundant
+  // after the first time. Once we remove TFS dependency we can
+  // construct each backend in a way that makes it directly aware of
+  // the inference server
+  InferenceBackend* inference_backend = backend_handle->GetInferenceBackend();
+  inference_backend->SetInferenceServer(this);
+  inference_backend->Run(
       infer_stats, request_provider, response_provider, OnCompleteHandleInfer);
 }
 
@@ -652,81 +760,6 @@ InferenceServer::UptimeNs() const
 
   uint64_t now_ns = now.tv_sec * NANOS_PER_SECOND + now.tv_nsec;
   return now_ns - start_time_ns_;
-}
-
-//
-// InferBackendHandle
-//
-Status
-InferenceServer::InferBackendHandle::Init(
-    const std::string& model_name, const int64_t model_version,
-    tfs::ServerCore* core)
-{
-  // Create the model-spec. A negative version indicates that the
-  // latest version of the model should be used.
-  tfs::ModelSpec model_spec;
-  model_spec.set_name(model_name);
-  if (model_version >= 0) {
-    model_spec.mutable_version()->set_value(model_version);
-  }
-
-  // Get the InferenceBackend appropriate for the request.
-  Platform platform;
-  Status status =
-      ModelRepositoryManager::GetModelPlatform(model_name, &platform);
-  if (status.IsOk()) {
-    tensorflow::Status tfstatus;
-    is_ = nullptr;
-
-    switch (platform) {
-      case Platform::PLATFORM_TENSORFLOW_GRAPHDEF:
-        tfstatus = core->GetServableHandle(model_spec, &(graphdef_bundle_));
-        if (tfstatus.ok()) {
-          is_ = static_cast<InferenceBackend*>(graphdef_bundle_.get());
-        }
-        break;
-      case Platform::PLATFORM_TENSORFLOW_SAVEDMODEL:
-        tfstatus = core->GetServableHandle(model_spec, &(saved_model_bundle_));
-        if (tfstatus.ok()) {
-          is_ = static_cast<InferenceBackend*>(saved_model_bundle_.get());
-        }
-        break;
-      case Platform::PLATFORM_TENSORRT_PLAN:
-        tfstatus = core->GetServableHandle(model_spec, &(plan_bundle_));
-        if (tfstatus.ok()) {
-          is_ = static_cast<InferenceBackend*>(plan_bundle_.get());
-        }
-        break;
-      case Platform::PLATFORM_CAFFE2_NETDEF:
-        tfstatus = core->GetServableHandle(model_spec, &(netdef_bundle_));
-        if (tfstatus.ok()) {
-          is_ = static_cast<InferenceBackend*>(netdef_bundle_.get());
-        }
-        break;
-      case Platform::PLATFORM_CUSTOM:
-        tfstatus = core->GetServableHandle(model_spec, &(custom_bundle_));
-        if (tfstatus.ok()) {
-          is_ = static_cast<InferenceBackend*>(custom_bundle_.get());
-        }
-        break;
-      case Platform::PLATFORM_ENSEMBLE:
-        tfstatus = core->GetServableHandle(model_spec, &(ensemble_bundle_));
-        if (tfstatus.ok()) {
-          is_ = static_cast<InferenceBackend*>(ensemble_bundle_.get());
-        }
-        break;
-      default:
-        break;
-    }
-  }
-
-  if (is_ == nullptr) {
-    status = Status(
-        RequestStatusCode::UNAVAILABLE,
-        "Inference request for unknown model '" + model_name + "'");
-  }
-
-  return status;
 }
 
 }}  // namespace nvidia::inferenceserver
