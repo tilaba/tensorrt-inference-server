@@ -133,8 +133,14 @@ cc_library(
 )
 
 cc_library(
-    name = "constants",
-    hdrs = ["constants.h"],
+    name = "backend_header",
+    hdrs = ["backend.h"],
+    deps = [
+        ":label_provider",
+        ":model_config_proto",
+        ":scheduler",
+        ":status",
+    ],
 )
 
 cc_library(
@@ -152,54 +158,54 @@ cc_library(
 )
 
 cc_library(
-    name = "backend_header",
-    hdrs = ["backend.h"],
-    deps = [
-        ":label_provider",
-        ":model_config_proto",
-        ":scheduler",
-        ":status",
-    ],
+    name = "constants",
+    hdrs = ["constants.h"],
 )
 
 cc_library(
-    name = "provider_header",
-    hdrs = ["provider.h"],
+    name = "dynamic_batch_scheduler",
+    srcs = ["dynamic_batch_scheduler.cc"],
+    hdrs = ["dynamic_batch_scheduler.h"],
     deps = [
         ":api_proto",
-        ":grpc_service_proto",
-        ":status",
-        "@com_github_libevent_libevent//:libevent",
-    ],
-)
-
-cc_library(
-    name = "provider",
-    srcs = ["provider.cc"],
-    deps = [
-        ":backend",
         ":constants",
         ":provider_header",
         ":logging",
         ":model_config",
-        ":model_config_utils",
-        "@com_github_libevent_libevent//:libevent",
+        ":model_config_proto",
+        ":scheduler",
+        ":server_status_header",
+        ":status",
     ],
 )
 
 cc_library(
-    name = "provider_utils",
-    srcs = ["provider_utils.cc"],
-    hdrs = ["provider_utils.h"],
+    name = "ensemble_scheduler",
+    srcs = ["ensemble_scheduler.cc"],
+    hdrs = ["ensemble_scheduler.h"],
     deps = [
         ":api_proto",
         ":backend_header",
-        ":provider_header",
-        ":model_config",
+        ":logging",
+        ":model_config_proto",
         ":model_config_utils",
-        ":grpc_service_proto",
+        ":provider_header",
+        ":provider_utils",
+        ":scheduler",
+        ":server_header",
+        ":server_status_header",
+    ],
+)
+
+cc_library(
+    name = "ensemble_utils",
+    srcs = ["ensemble_utils.cc"],
+    hdrs = ["ensemble_utils.h"],
+    deps = [
+        ":logging",
+        ":model_config_proto",
+        ":model_config_utils",
         ":status",
-        "@com_github_libevent_libevent//:libevent",
     ],
 )
 
@@ -269,6 +275,20 @@ cc_library(
 )
 
 cc_library(
+    name = "model_config_utils",
+    srcs = ["model_config_utils.cc"],
+    hdrs = ["model_config_utils.h"],
+    deps = [
+        ":autofill",
+        ":constants",
+        ":logging",
+        ":model_config",
+        ":model_config_proto",
+        ":status",
+    ],
+)
+
+cc_library(
     name = "model_repository_manager",
     srcs = ["model_repository_manager.cc"],
     hdrs = ["model_repository_manager.h"],
@@ -294,26 +314,60 @@ cc_library(
 )
 
 cc_library(
-    name = "scheduler",
-    hdrs = ["scheduler.h"],
+    name = "provider_header",
+    hdrs = ["provider.h"],
     deps = [
-        ":server_status_header",
+        ":api_proto",
+        ":grpc_service_proto",
+        ":status",
+        "@com_github_libevent_libevent//:libevent",
+    ],
+)
+
+cc_library(
+    name = "provider",
+    srcs = ["provider.cc"],
+    deps = [
+        ":backend",
+        ":constants",
+        ":provider_header",
+        ":logging",
+        ":model_config",
+        ":model_config_utils",
+        "@com_github_libevent_libevent//:libevent",
+    ],
+)
+
+cc_library(
+    name = "provider_utils",
+    srcs = ["provider_utils.cc"],
+    hdrs = ["provider_utils.h"],
+    deps = [
+        ":api_proto",
+        ":backend_header",
+        ":provider_header",
+        ":model_config",
+        ":model_config_utils",
+        ":grpc_service_proto",
+        ":status",
+        "@com_github_libevent_libevent//:libevent",
+    ],
+)
+
+cc_library(
+    name = "request_status",
+    srcs = ["request_status.cc"],
+    hdrs = ["request_status.h"],
+    deps = [
+        ":request_status_proto",
         ":status",
     ],
 )
 
 cc_library(
-    name = "dynamic_batch_scheduler",
-    srcs = ["dynamic_batch_scheduler.cc"],
-    hdrs = ["dynamic_batch_scheduler.h"],
+    name = "scheduler",
+    hdrs = ["scheduler.h"],
     deps = [
-        ":api_proto",
-        ":constants",
-        ":provider_header",
-        ":logging",
-        ":model_config",
-        ":model_config_proto",
-        ":scheduler",
         ":server_status_header",
         ":status",
     ],
@@ -337,20 +391,36 @@ cc_library(
 )
 
 cc_library(
-    name = "ensemble_scheduler",
-    srcs = ["ensemble_scheduler.cc"],
-    hdrs = ["ensemble_scheduler.h"],
+    name = "server_status_header",
+    hdrs = ["server_status.h"],
     deps = [
-        ":api_proto",
-        ":backend_header",
-        ":logging",
         ":model_config_proto",
-        ":model_config_utils",
+        ":model_repository_manager",
+        ":server_status_proto",
+        ":status",
+        "@tf_serving//tensorflow_serving/core:servable_state_monitor",
+    ],
+)
+
+cc_library(
+    name = "server_status",
+    srcs = ["server_status.cc"],
+    deps = [
+        ":constants",
         ":provider_header",
-        ":provider_utils",
-        ":scheduler",
-        ":server_header",
+        ":logging",
+        ":metric_model_reporter",
         ":server_status_header",
+        "@tf_serving//tensorflow_serving/core:servable_state",
+    ],
+)
+
+cc_library(
+    name = "status",
+    srcs = ["status.cc"],
+    hdrs = ["status.h"],
+    deps = [
+        ":request_status_proto",
     ],
 )
 
@@ -444,78 +514,18 @@ cc_library(
 )
 
 cc_library(
-    name = "server_status_header",
-    hdrs = ["server_status.h"],
+    name = "inprocess_server",
+    hdrs = ["request_inprocess.h"],
+    srcs = ["request_inprocess.cc"],
     deps = [
-        ":model_config_proto",
-        ":model_repository_manager",
-        ":server_status_proto",
-        ":status",
-        "@tf_serving//tensorflow_serving/core:servable_state_monitor",
-    ],
-)
-
-cc_library(
-    name = "server_status",
-    srcs = ["server_status.cc"],
-    deps = [
-        ":constants",
-        ":provider_header",
-        ":logging",
-        ":metric_model_reporter",
-        ":server_status_header",
-        "@tf_serving//tensorflow_serving/core:servable_state",
-    ],
-)
-
-cc_library(
-    name = "status",
-    srcs = ["status.cc"],
-    hdrs = ["status.h"],
-    deps = [
-        ":request_status_proto",
-    ],
-)
-
-cc_library(
-    name = "request_status",
-    srcs = ["request_status.cc"],
-    hdrs = ["request_status.h"],
-    deps = [
-        ":request_status_proto",
-        ":status",
-    ],
-)
-
-cc_library(
-    name = "model_config_utils",
-    srcs = ["model_config_utils.cc"],
-    hdrs = ["model_config_utils.h"],
-    deps = [
-        ":autofill",
-        ":constants",
-        ":logging",
-        ":model_config",
-        ":model_config_proto",
-        ":status",
-    ],
-)
-
-cc_library(
-    name = "ensemble_utils",
-    srcs = ["ensemble_utils.cc"],
-    hdrs = ["ensemble_utils.h"],
-    deps = [
-        ":logging",
-        ":model_config_proto",
-        ":model_config_utils",
-        ":status",
+        "//src/clients/c++:request_header",
     ],
 )
 
 cc_binary(
     name = "libtrtserver.so",
     deps = [
+        ":inprocess_server",
         ":server",
     ],
     linkopts = [
