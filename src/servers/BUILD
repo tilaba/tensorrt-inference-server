@@ -28,18 +28,20 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
+cc_import(
+    name = "libtrtserver_import",
+    shared_library = "//src/core:libtrtserver.so",
+)
+
 cc_binary(
     name = "trtserver",
     srcs = ["main.cc"],
     deps = [
+        ":libtrtserver_import",
         "//src/core:grpc_server",
         "//src/core:http_server",
-        "//src/core:server",
-        "@org_tensorflow//tensorflow/contrib:contrib_kernels",
-        "@org_tensorflow//tensorflow/contrib:contrib_ops_op_lib",
-        "@org_tensorflow//tensorflow/contrib/tensorrt:trt_engine_op_op_lib",
-        "@org_tensorflow//tensorflow/contrib/tensorrt:trt_engine_op_kernel",
-        "@org_tensorflow//tensorflow/contrib/tensorrt:trt_shape_function",
+        "//src/core:metrics_header",
+        "//src/core:server_header",
         "@extern_lib//:libcaffe2",
         "@extern_lib//:libcaffe2_detectron_ops_gpu",
         "@extern_lib//:libcaffe2_gpu",
@@ -52,11 +54,5 @@ cc_binary(
         "@extern_lib//:libmkl_intel_lp64",
         "@extern_lib//:libmkl_rt",
         "@extern_lib//:libmkl_vml_def",
-    ],
-    linkopts = [
-        "-pthread",
-        "-L/usr/local/cuda/lib64/stubs",
-        "-lnvidia-ml",
-        "-lnvonnxparser_runtime"
     ],
 )

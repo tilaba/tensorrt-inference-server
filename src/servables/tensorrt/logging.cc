@@ -48,6 +48,9 @@ TensorRTLogger::log(Severity severity, const char* msg)
     case Severity::kINFO:
       LOG_INFO << msg;
       break;
+    case Severity::kVERBOSE:
+      LOG_VERBOSE(1) << msg;
+      break;
   }
 }
 

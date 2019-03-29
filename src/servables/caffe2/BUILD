@@ -36,13 +36,19 @@ cc_proto_library(
 )
 
 cc_library(
-    name = "autofill",
-    srcs = ["autofill.cc"],
+    name = "autofill_header",
     hdrs = ["autofill.h"],
     deps = [
-        "//src/core:autofill_header",
+        "//src/core:model_config_proto",
+    ],
+)
+
+cc_library(
+    name = "autofill",
+    srcs = ["autofill.cc"],
+    deps = [
         "//src/core:constants",
-        "//src/core:status",
+        "//src/core:server_header",
         "@org_tensorflow//tensorflow/core:lib",
     ],
 )
@@ -60,15 +66,10 @@ cc_library(
          "netdef_bundle_c2.h"
     ],
     deps = [
-        "//src/core:backend",
         "//src/core:constants",
-        "//src/core:logging",
         "//src/core:model_config_proto",
         "//src/core:model_config",
-        "//src/core:provider",
-        "//src/core:server_status",
-        "//src/core:model_config_utils",
-        "//src/core:status",
+        "//src/core:server_header",
     ],
 )
 
@@ -80,11 +81,9 @@ cc_library(
         ":netdef_bundle",
         ":netdef_bundle_proto",
         "//src/core:constants",
-        "//src/core:logging",
         "//src/core:model_config",
         "//src/core:model_config_proto",
-        "//src/core:model_config_utils",
-        "//src/core:status",
+        "//src/core:server_header",
         "@org_tensorflow//tensorflow/core:lib",
         "@tf_serving//tensorflow_serving/core:loader",
         "@tf_serving//tensorflow_serving/core:simple_loader",

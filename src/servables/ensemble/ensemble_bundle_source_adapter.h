@@ -51,7 +51,7 @@ class EnsembleBundleSourceAdapter final
   ~EnsembleBundleSourceAdapter() override;
 
  private:
-  TF_DISALLOW_COPY_AND_ASSIGN(EnsembleBundleSourceAdapter);
+  DISALLOW_COPY_AND_ASSIGN(EnsembleBundleSourceAdapter);
   using SimpleSourceAdapter =
       tfs::SimpleLoaderSourceAdapter<tfs::StoragePath, EnsembleBundle>;
 

@@ -29,8 +29,6 @@
 #include "src/core/autofill.h"
 #include "src/core/model_config.pb.h"
 #include "src/servables/tensorflow/savedmodel_bundle.pb.h"
-#include "tensorflow/cc/saved_model/loader.h"
-#include "tensorflow/cc/saved_model/tag_constants.h"
 
 namespace nvidia { namespace inferenceserver {
 

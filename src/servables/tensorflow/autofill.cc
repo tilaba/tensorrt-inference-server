@@ -32,6 +32,8 @@
 #include "src/servables/tensorflow/loader.h"
 #include "src/servables/tensorflow/tf_utils.h"
 #include "tensorflow/core/lib/io/path.h"
+#include "tensorflow/cc/saved_model/loader.h"
+#include "tensorflow/cc/saved_model/tag_constants.h"
 
 namespace nvidia { namespace inferenceserver {
 
