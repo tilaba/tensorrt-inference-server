@@ -62,7 +62,14 @@ class InferTest(unittest.TestCase):
                                output0_raw=output0_raw, output1_raw=output1_raw, swap=swap)
         
         input_size = 16
-        ensemble_prefix = ["", "simple_", "sequence_", "fan_"]
+
+        all_ensemble_prefix = ["simple_", "sequence_", "fan_"]
+        ensemble_prefix = [""]
+        for prefix in all_ensemble_prefix:
+            if tu.validate_for_ensemble_model(prefix,
+                                    input_dtype, output0_dtype, output1_dtype,
+                                    (input_size,), (input_size,), (input_size,)):
+                ensemble_prefix.append(prefix)
 
         if tu.validate_for_tf_model(input_dtype, output0_dtype, output1_dtype,
                                     (input_size,), (input_size,), (input_size,)):
@@ -91,10 +98,10 @@ class InferTest(unittest.TestCase):
         # the inputs so always set to False
         if tu.validate_for_custom_model(input_dtype, output0_dtype, output1_dtype,
                                         (input_size,), (input_size,), (input_size,)):
-            for prefix in ensemble_prefix:
-                _infer_exact_helper(self, prefix + 'custom', (input_size,), 8,
-                                input_dtype, output0_dtype, output1_dtype,
-                                output0_raw=output0_raw, output1_raw=output1_raw, swap=False)
+            # No basic ensemble models are created against custom models
+            _infer_exact_helper(self, 'custom', (input_size,), 8,
+                            input_dtype, output0_dtype, output1_dtype,
+                            output0_raw=output0_raw, output1_raw=output1_raw, swap=False)
 
     def test_raw_bbb(self):
         self._full_exact(np.int8, np.int8, np.int8,

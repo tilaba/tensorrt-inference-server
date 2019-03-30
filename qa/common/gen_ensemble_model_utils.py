@@ -79,6 +79,7 @@ class EnsembleSteps:
             input_dtype, output0_dtype, output1_dtype):
         steps = '''
 ensemble_scheduling {{
+  step [
     {{
       model_name: "{}"
       model_version: -1
@@ -110,6 +111,7 @@ ensemble_scheduling {{
             input_dtype, output0_dtype, output1_dtype):
         steps = '''
 ensemble_scheduling {{
+  step [
     {{
       model_name: "nop_{}_{}"
       model_version: -1
@@ -161,6 +163,7 @@ ensemble_scheduling {{
             input_dtype, output0_dtype, output1_dtype):
         steps = '''
 ensemble_scheduling {{
+  step [
     {{
       model_name: "nop_{}_{}"
       model_version: -1
@@ -286,13 +289,13 @@ def create_ensemble_modelconfig(
         ensemble_model_name = "{}_{}{}".format(ensemble_type, base_model, "_nobatch" if max_batch == 0 else "")
         model_name = tu.get_model_name(ensemble_model_name,
                                     input_dtype, output0_dtype, output1_dtype)
-        base_model_name = tu.get_model_name(base_model,
+        base_model_name = tu.get_model_name("{}{}".format(base_model, "_nobatch" if max_batch == 0 else ""),
                                     input_dtype, output0_dtype, output1_dtype)
 
         steps = EnsembleSteps(ensemble_type).get_steps(
                         base_model_name, len(input_shape), len(output0_shape),
                         len(output1_shape), input_model_dtype,
-                        output0_model_dtype, output0_model_dtype)
+                        output0_model_dtype, output1_model_dtype)
 
         config_dir = models_dir + "/" + model_name
         config = '''
@@ -377,6 +380,7 @@ output [
     dims: [ {dim} ]
   }}
 ]
+instance_group [ {{ kind: KIND_CPU }} ]
 '''.format(dtype=tensor_dtype, dim_len=len(tensor_shape),
             batch_size=1024, dim=tu.shape_to_dims_str(tensor_shape))
 
